@@ -1,16 +1,13 @@
 import rclpy
 from rclpy.node import Node
 import cv2
-from std_msgs.msg import String, Int32MultiArray
-from geometry_msgs.msg import Point
+from std_msgs.msg import String
 import threading
 import json
 import time
 import math
 from pymavlink import mavutil
 from pymavlink.quaternion import QuaternionBase
-
-
 
 class MinimalSubscriber(Node):
 
@@ -21,14 +18,7 @@ class MinimalSubscriber(Node):
             'rectangle_coordinates',
             self.listener_callback,
             10)
-        self.change_mode_flag = False
-        self.running = True
-        self.input_thread = threading.Thread(target=self.check_for_input)
-        self.input_thread.start()
         self.subscription  # prevent unused variable warning
-        self.rectangle_pub = self.create_publisher(Int32MultiArray, 'rectangle_data', 10)
-        self.circle_pub = self.create_publisher(Point, 'circle_data', 10)
-        self.text_pub = self.create_publisher(String, 'text_data', 10)
 
         self.cap = cv2.VideoCapture('rtsp://127.0.0.1:8554/test')
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
@@ -40,7 +30,7 @@ class MinimalSubscriber(Node):
 
         # MAVLink Connection
         self.mode = 'None'
-        self.master = mavutil.mavlink_connection('tcp:192.168.100.188:14550')
+        self.master = mavutil.mavlink_connection('/dev/ttyACM0')
         print("Connected to MAVLink!") 
         print("System ID:", self.master.target_system)
         print("Component ID:", self.master.target_component)
@@ -84,18 +74,10 @@ class MinimalSubscriber(Node):
                     if success:
                         (x, y, w, h) = [int(v) for v in box]
                         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                        rect_msg = Int32MultiArray()
-                        rect_msg.data = [x, y, w, h]
-                        self.rectangle_pub.publish(rect_msg)
 
                         center_x = x + w // 2
                         center_y = y + h // 2
                         cv2.circle(frame, (center_x, center_y), 2, (0, 0, 255), -1)
-                        circle_msg = Point()
-                        circle_msg.x = float(center_x)
-                        circle_msg.y = float(center_y)
-                        circle_msg.z = 0.0  # z can be ignored or used for radius
-                        self.circle_pub.publish(circle_msg)
 
                         bbox_x = int(x + w // 2)
                         bbox_y = int(y + h // 2)
@@ -115,9 +97,6 @@ class MinimalSubscriber(Node):
                             color = (255, 0, 0)
                             thickness = 1
                             frame = cv2.putText(frame, 'GUIDED', org, font, fontScale, color, thickness, cv2.LINE_AA)
-                            text_msg = String()
-                            text_msg.data = 'GUIDED'
-                            self.text_pub.publish(text_msg)
                             self.master.mav.set_attitude_target_send(
                                 int(1e3*(time.time()-self.boot_time)),
                                 self.master.target_system,
@@ -134,7 +113,7 @@ class MinimalSubscriber(Node):
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
                 break
-            if self.change_mode_flag:
+            elif key == ord('x'):
                 self.mode = 'GUIDED'
                 mode_id = self.master.mode_mapping()[self.mode]
                 self.master.set_mode(mode_id)
@@ -142,16 +121,9 @@ class MinimalSubscriber(Node):
                     self.master.target_system,
                     mavutil.mavlink.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
                     mode_id)
-                self.change_mode_flag = False
 
         self.cap.release()
         cv2.destroyAllWindows()
-    
-    def check_for_input(self):
-        while self.running:
-            inp = input("Enter 'x' to change mode: ")
-            if inp == 'x':
-                self.change_mode_flag = True
 
     def listener_callback(self, msg):
         self.get_logger().info('I heard: "{}"'.format(msg.data))
@@ -179,8 +151,6 @@ def main(args=None):
     rclpy.init(args=args)
     minimal_subscriber = MinimalSubscriber()
     rclpy.spin(minimal_subscriber)
-    minimal_subscriber.running = False
-    minimal_subscriber.input_thread.join()
     minimal_subscriber.video_thread.join()
     minimal_subscriber.destroy_node()
     rclpy.shutdown()
