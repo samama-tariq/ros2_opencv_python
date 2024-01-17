@@ -40,7 +40,7 @@ class MinimalSubscriber(Node):
 
         # MAVLink Connection
         self.mode = 'None'
-        self.master = mavutil.mavlink_connection('tcp:192.168.100.35:14550')
+        self.master = mavutil.mavlink_connection('tcp:192.168.0.105:14550')
         print("Connected to MAVLink!") 
         print("System ID:", self.master.target_system)
         print("Component ID:", self.master.target_component)
@@ -99,7 +99,7 @@ class MinimalSubscriber(Node):
 
                         bbox_x = int(x + w // 2)
                         bbox_y = int(y + h // 2)
-                        
+
                         x_p = bbox_x - frame_x
                         y_p = bbox_y - frame_y
                         roll = 0.017 * x_p
@@ -146,7 +146,7 @@ class MinimalSubscriber(Node):
 
         self.cap.release()
         cv2.destroyAllWindows()
-    
+
     def check_for_input(self):
         while self.running:
             inp = input("Enter 'x' to change mode: ")
