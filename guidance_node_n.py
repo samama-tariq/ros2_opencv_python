@@ -54,21 +54,18 @@ class MinimalSubscriber(Node):
             print("Received 'guidance on' command, changing mode to GUIDED.")
 
     def x_map(self, x, in_min, in_max, out_min, out_max):
-        if x > -0.22 and x < 0.22:
-            return int(0)
-        else:
-            return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+        return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
     def y_map(self, x, in_min, in_max, out_min, out_max):
-        if x > -0.2 and x < 0.2:
-            msg = self.master.recv_msg()
-            if msg is not None:
-                pitch_ = math.degrees(msg.pitch)
-                return pitch_
-            else:
-                return int(-22)
+        msg = self.master.recv_msg()
+        if msg is not None:
+            pitch_ = math.degrees(msg.pitch)
+        if x>-10 and x<10:
+            return pitch_
         else:
-            return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+            y_v=(x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+            pitch=y_v+pitch_
+            return pitch
     
     def capture_video(self):
         ret, frame = self.cap.read()
@@ -104,10 +101,8 @@ class MinimalSubscriber(Node):
 
                     x_p = bbox_x - frame_x
                     y_p = bbox_y - frame_y
-                    roll = 0.017 * x_p
-                    pitch = 0.02 * y_p
-                    x_val = self.x_map(roll, -10, 10, -10, 10)
-                    y_val = self.y_map(pitch, -7, 7, -12, -32)
+                    x_val = self.x_map(x_p, -320, 320, -20, 20)
+                    y_val = self.y_map(pitch, -240, 240, 30, -30)
                     print('node start tracking')
 
                     if self.mode == 'GUIDED':
