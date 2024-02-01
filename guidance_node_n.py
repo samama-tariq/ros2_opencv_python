@@ -58,14 +58,14 @@ class MinimalSubscriber(Node):
 
     def y_map(self, x, in_min, in_max, out_min, out_max):
         msg = self.master.recv_msg()
-        if msg is not None:
+        if msg is not None and msg.get_type()=='ATTITUDE':
             pitch_ = math.degrees(msg.pitch)
-        if x>-10 and x<10:
-            return pitch_
-        else:
-            y_v=(x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-            pitch=y_v+pitch_
-            return pitch
+            if x>-10 and x<10:
+                return pitch_
+            else:
+                y_v=(x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+                pitchh=y_v+pitch_
+                return pitchh
     
     def capture_video(self):
         ret, frame = self.cap.read()
@@ -102,7 +102,7 @@ class MinimalSubscriber(Node):
                     x_p = bbox_x - frame_x
                     y_p = bbox_y - frame_y
                     x_val = self.x_map(x_p, -320, 320, -20, 20)
-                    y_val = self.y_map(pitch, -240, 240, 30, -30)
+                    y_val = self.y_map(y_p, -240, 240, 30, -30)
                     print('node start tracking')
 
                     if self.mode == 'GUIDED':
